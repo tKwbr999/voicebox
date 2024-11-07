@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // ConcatAllWavFiles は指定されたディレクトリ内の音声ファイルを結合し、1つのファイルに保存します。
@@ -122,35 +123,66 @@ func updateWavHeader(outputFile *os.File, dataSize int64) error {
 }
 
 func GenerateAndSaveAudio(text string, speakerID int, outputPath string) error {
-	// 音声合成用のクエリを生成
-	qa, err := Audio(text, speakerID)
-	if err != nil {
-		return fmt.Errorf("error generating audio query: %v", err)
-	}
+	// 無音行かどうかを判定する
+	// 無音行はtextの行開始が"..."で始まるかで判定する。
+	var audioData []byte
+	if strings.HasPrefix(text, "...") {
+		// textから"..."を削除
+		silentType := strings.TrimPrefix(text, "...")
+		silentFilename := fmt.Sprintf("silent_%s.wav", silentType)
+		// 無音ファイルを取得
+		silentFile, err := os.Open(fmt.Sprintf("../../../asset/%s", silentFilename))
+		if err != nil {
+			return fmt.Errorf("無音ファイルを開く際にエラーが発生しました: %v", err)
+		}
+		defer silentFile.Close()
+		// silentFileをbyte配列に変換
+		audioData, err = io.ReadAll(silentFile)
+		if err != nil {
+			return fmt.Errorf("無音ファイルを読み込む際にエラーが発生しました: %v", err)
+		}
+	} else if text == "" {
+		silentFile, err := os.Open("../../../asset/silent_N.wav")
+		if err != nil {
+			return fmt.Errorf("無音ファイルを開く際にエラーが発生しました: %v", err)
+		}
+		defer silentFile.Close()
+		// silentFileをbyte配列に変換
+		audioData, err = io.ReadAll(silentFile)
+		if err != nil {
+			return fmt.Errorf("無音ファイルを読み込む際にエラーが発生しました: %v", err)
+		}
+	} else {
+		// 音声合成用のクエリを生成
+		qa, err := Audio(text, speakerID)
+		if err != nil {
+			return fmt.Errorf("音声クエリの生成中にエラーが発生しました: %v", err)
+		}
 
-	// 音声を合成
-	audioData, err := Synthesize(qa, speakerID)
-	if err != nil {
-		return fmt.Errorf("error synthesizing audio: %v", err)
+		// 音声を合成
+		audioData, err = Synthesize(qa, speakerID)
+		if err != nil {
+			return fmt.Errorf("音声合成中にエラーが発生しました: %v", err)
+		}
 	}
 
 	// 音声ファイルを保存
 	// outディレクトリを作成
-	err = os.MkdirAll("out", os.ModePerm)
+	err := os.MkdirAll("out", os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("error creating out directory: %v", err)
+		return fmt.Errorf("outディレクトリの作成中にエラーが発生しました: %v", err)
 	}
 
 	// プロジェクトルートのoutディレクトリにoutput.wavとして保存
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("error creating audio file: %v", err)
+		return fmt.Errorf("音声ファイルの作成中にエラーが発生しました: %v", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(audioData)
 	if err != nil {
-		return fmt.Errorf("error writing audio data to file: %v", err)
+		return fmt.Errorf("音声データをファイルに書き込む際にエラーが発生しました: %v", err)
 	}
 
 	return nil

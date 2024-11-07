@@ -42,17 +42,14 @@ func ExtractLines(filepath string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		line = Trim(line)
-		if line == "" {
-			continue
-		}
 		parts := strings.Split(line, "。")
-		for _, part := range parts {
-			if part == "" {
-				continue
+		if len(parts) > 1 {
+			// partsの最後の要素が空文字の場合は取り除く
+			if parts[len(parts)-1] == "" {
+				parts = parts[:len(parts)-1]
 			}
-			lines = append(lines, part)
 		}
+		lines = append(lines, parts...)
 	}
 	if err := scanner.Err(); err != nil {
 		fmt.Println("ファイルをスキャン中にエラーが発生しました: ", err)
@@ -69,6 +66,16 @@ func WriteScriptFile(lines []string, path string) error {
 	defer file.Close()
 	// linesを台本に書き込み
 	for _, script := range lines {
+		// 無音行の場合は改行のみを書き込む
+		// 無音行の判定は行の開始が"..."となるかで判定を行う
+		if strings.HasPrefix(script, "...") {
+			_, err := file.WriteString("\n")
+			if err != nil {
+				return fmt.Errorf("台本への書き込みに失敗しました: %v", err)
+			}
+			continue
+		}
+
 		_, err := file.WriteString(script + "\n")
 		if err != nil {
 			return fmt.Errorf("台本への書き込みに失敗しました: %v", err)

@@ -55,6 +55,7 @@ func Exec() error {
 		return err
 	}
 
+	// ファイルごとに音声合成と保存を実行
 	for _, path := range files {
 		err := GenerateAndSaveAudio(path)
 		if err != nil {
@@ -110,13 +111,14 @@ func GenerateAndSaveAudio(path string) error {
 
 		go func(i int, v string) {
 			defer wg.Done()
+			defer func() { <-sem }()
+
 			filename := fmt.Sprintf("%s/%05d.wav", tmpDir, i)
 			fmt.Println("ファイル番号", filename, time.Now().Format("2006-01-02 15:04:05.000"))
 			err := app.GenerateAndSaveAudio(v, speakerID, filename)
 			if err != nil {
 				fmt.Println(err)
 			}
-			<-sem // スレッドを解放
 		}(i, v)
 	}
 
