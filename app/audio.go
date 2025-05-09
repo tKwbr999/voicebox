@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 // ConcatAllWavFiles は指定されたディレクトリ内の音声ファイルを結合し、1つのファイルに保存します。
@@ -22,7 +21,7 @@ func ConcatAllWavFiles(dir string, id string) error {
 	sort.Strings(files)
 
 	// 出力ファイルを作成
-	outputFile, err := os.Create(fmt.Sprintf("out/output_%s.wav", id))
+	outputFile, err := os.Create(fmt.Sprintf("out/%s.wav", id))
 	if err != nil {
 		return fmt.Errorf("error creating output file: %v", err)
 	}
@@ -126,22 +125,7 @@ func GenerateAndSaveAudio(text string, speakerID int, outputPath string) error {
 	// 無音行かどうかを判定する
 	// 無音行はtextの行開始が"..."で始まるかで判定する。
 	var audioData []byte
-	if strings.HasPrefix(text, "...") {
-		// textから"..."を削除
-		silentType := strings.TrimPrefix(text, "...")
-		silentFilename := fmt.Sprintf("silent_%s.wav", silentType)
-		// 無音ファイルを取得
-		silentFile, err := os.Open(fmt.Sprintf("../../../asset/%s", silentFilename))
-		if err != nil {
-			return fmt.Errorf("無音ファイルを開く際にエラーが発生しました: %v", err)
-		}
-		defer silentFile.Close()
-		// silentFileをbyte配列に変換
-		audioData, err = io.ReadAll(silentFile)
-		if err != nil {
-			return fmt.Errorf("無音ファイルを読み込む際にエラーが発生しました: %v", err)
-		}
-	} else if text == "" {
+	if text == "" {
 		silentFile, err := os.Open("../../../asset/silent_N.wav")
 		if err != nil {
 			return fmt.Errorf("無音ファイルを開く際にエラーが発生しました: %v", err)
